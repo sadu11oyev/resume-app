@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Resume page</title>
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <style>
+        body {
+            overflow-x: hidden;
+        }
+        #my_form {
+            max-width: 1800px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+
+        }
+        #educations,
+        #experiences {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1 class="bg-primary text-white text-center">Resume</h1>
+
+    <form id="my_form" enctype="multipart/form-data">
+        <div class="row">
+            <div class="col-3">
+                <div class="row">
+                    <div class="col-8 offset-2">
+                        <input name="photo" onchange="changePhoto(event)" type="file" class="d-none" id="fileInput"
+                               required="required" accept="image/*">
+                        <label for="fileInput">
+                            <img width="150"
+                                 src="/photo/unknown.jpg"
+                                 class="img-fluid" id="currentImage" alt="Current image">
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="col-9">
+                <div class="row">
+                    <div class="col-4">
+                        <label for="firstName">First Name</label>
+                        <input name="firstName" type="text" class="form-control input-field" id="firstName"
+                            placeholder="Enter your firstName" data-key="firstName">
+                    </div>
+                    <div class="col-4">
+                        <label for="lastName">Last Name</label>
+                        <input name="lastName" type="text" class="form-control input-field" id="lastName"
+                            placeholder="Enter your lastName" data-key="lastName">
+                    </div>
+                    <div class="col-4">
+                        <label for="fatherName">Father's Name</label>
+                        <input name="fatherName" type="text" class="form-control input-field" id="fatherName"
+                            placeholder="Enter your father's name" data-key="fatherName">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-4">
+                        <label for="age">Age</label>
+                        <input name="age" data-key="age" type="number" class="form-control input-field" id="age"
+                            placeholder="Enter your age">
+                    </div>
+                    <div class="col-4">
+                        <label for="phoneNumber">Phone number</label>
+                        <input name="phoneNumber" data-key="phoneNumber" type="text" class="form-control input-field"
+                            id="phoneNumber" placeholder="Enter your phone number">
+                    </div>
+                    <div class="col-4">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="input-group my-2">
+            <select id="techId" required="required">
+                <option selected disabled>Select technology</option>
+                <option th:each="tech:${technologies}" th:value="${tech.id}" th:text="${tech.name}"></option>
+            </select>
+            <button type="button" class="btn btn-dark" onclick="addTech()">Add</button>
+
+            <div id="techList"></div>
+
+        </div>
+
+        <div class="row">
+            <div class="col-6">
+                <div class="card">
+                    <div class="card-header">
+                        Education
+                        <button type="button" class="btn btn-dark m-2" onclick="addEducation()"> + </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="educations"> </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card">
+                    <div class="card-header">
+                        Experience
+                        <button type="button" class="btn btn-dark m-2" onclick="addExperience()"> + </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="experiences"> </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="float-lg-left">
+            <button type="submit" class="btn btn-primary m-2">generate resume</button>
+        </div>
+    </form>
+    <div class="float-lg-right">
+        <button type="submit" id="downloadButton" class="btn btn-primary m-2">download resume</button>
+    </div>
+
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.7.2/axios.min.js" integrity="sha512-JSCFHhKDilTRRXe9ak/FJ28dcpOJxzQaCd3Xg8MyF6XFjODhy/YMCM8HW0TFDckNHWUewW+kfvhin43hKtJxAw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script>
+        let photo;
+        let technology =[];
+        let data = {
+            firstName: "",
+            lastName: "",
+            fatherName: "",
+            age: "",
+            phoneNumber: "",
+            educations: [],
+            experiences: [],
+            technologies: []
+        }
+
+        function changePhoto(event) {
+            let file = event.target.files[0];
+            savePhoto(file)
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                let img = document.getElementById("currentImage");
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function savePhoto(file) {
+            event.preventDefault()
+            let formData = new FormData();
+            formData.append('photo', file)
+            axios.post("http://localhost:8080/api/resume/savePhoto", formData, {
+                headers: {
+                    ContentType: "multipart/form-data"
+                }
+            })
+        }
+
+        function isInTech(arr, id) {
+            return arr.some(item => item.id === id);
+        }
+        function addTech() {
+            let value = document.getElementById("techId").value;
+            axios.get("http://localhost:8080/api/resume/getTech", {params: {id: value}})
+                .then(res => {
+                    if (!isInTech(technology, res.data.id))
+                        technology.push(res.data)
+                    printTechs()
+                })
+        }
+
+        function deleteTech(id) {
+            technology = technology.filter(item => item.id !== id)
+            printTechs()
+        }
+        function printTechs() {
+            let techList = document.getElementById("techList");
+            let s = "";
+            technology.map(item => {
+                s +=
+                    `
+                    <button class="btn btn-link" onclick="deleteTech(${item.id})">${item.name}</button>
+                `
+            })
+            techList.innerHTML = s;
+        }
+
+
+        let educations = [];
+        function addEducation() {
+            educations.push({ name: "", froms: "", tos: "" });
+            renderEducations();
+        }
+
+        let experiences = [];
+        function addExperience() {
+            experiences.push({ name: "", froms: "", tos: "" });
+            renderExperiences();
+        }
+        (function RenderActives() {
+            addEducation();
+            addExperience();
+        })();
+        function deleteItem(index, type) {
+            if (type === 'education') {
+                educations.splice(index, 1);
+                renderEducations();
+            } else if (type === 'experience') {
+                experiences.splice(index, 1);
+                renderExperiences();
+            }
+        }
+
+        function renderEducations() {
+            let educationsDiv = document.getElementById("educations");
+            let s = "";
+            educations.forEach((item, index) => {
+                s += `<div class="input-group">
+                <input value="${item.name}" onkeyup="changeName(event, ${index}, educations)" type="text" placeholder="education" class="form-control my-1">
+                <input value="${item.froms}" onchange="changeFrom(event, ${index}, educations)" type="date" placeholder="from" class="form-control my-1">
+                <input value="${item.tos}" onchange="changeTo(event, ${index}, educations)" type="date" placeholder="to" class="form-control my-1">
+                <button type="button" class="btn btn-danger" onclick="deleteItem(${index}, 'education')">Delete</button>
+            </div>`;
+            });
+            educationsDiv.innerHTML = s;
+        }
+
+        function renderExperiences() {
+            let experiencesDiv = document.getElementById("experiences");
+            let s = "";
+            experiences.forEach((item, index) => {
+                s += `<div class="input-group">
+                <input value="${item.name}" onkeyup="changeName(event, ${index}, experiences)" type="text" placeholder="experience" class="form-control my-1">
+                <input value="${item.froms}" onchange="changeFrom(event, ${index}, experiences)" type="date" placeholder="from" class="form-control my-1">
+                <input value="${item.tos}" onchange="changeTo(event, ${index}, experiences)" type="date" placeholder="to" class="form-control my-1">
+                <button type="button" class="btn btn-danger" onclick="deleteItem(${index}, 'experience')">Delete</button>
+            </div>`;
+            });
+            experiencesDiv.innerHTML = s;
+        }
+        function retrieveValues() {
+            const inputs = document.querySelectorAll('#educations .input-group input[type="text"], #educations .input-group input[type="date"]');
+            const values = [];
+
+            inputs.forEach(input => {
+                const key = input.dataset.key;
+                const value = input.value;
+
+                values.push({ key, value });
+            });
+
+            console.log(values);
+        }
+        function changeName(event, index, array) {
+            array[index].name = event.target.value;
+        }
+
+        function changeFrom(event, index, array) {
+            array[index].froms = event.target.value;
+        }
+
+        function changeTo(event, index, array) {
+            array[index].tos = event.target.value;
+        }
+        document.getElementById("my_form").addEventListener("submit",(e)=>{
+            event.preventDefault();
+            saveAll();
+            retrieveValues();
+
+        });
+        document.querySelectorAll('.input-field').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const key = e.target.dataset.key;
+                data[key] = e.target.value;
+            });
+        });
+
+        function saveAll(event) {
+            data.experiences = experiences;
+            data.educations = educations;
+            data.technologies = technology;
+            console.log(data)
+
+            axios({
+                url: "http://localhost:8080/api/resume",
+                method: "POST",
+                data: data,
+            }).then(res => {
+                console.log(res)
+            });
+        }
+
+
+        document.getElementById('downloadButton').addEventListener('click', async () => {
+
+            try {
+                const response = await axios.get('http://localhost:8080/api/resume/generate-pdf', {
+                    responseType: 'blob' // Важно для скачивания файла
+                });
+
+                // Создание нового Blob объекта с данными ответа
+                const file = new Blob([response.data], { type: 'application/pdf' });
+
+                // Создание ссылки
+                const link = document.createElement('a');
+
+                // Установка атрибута download с именем файла
+                link.href = URL.createObjectURL(file);
+                link.setAttribute('download', 'generated.pdf');
+
+                // Программный клик по ссылке для скачивания файла
+                document.body.appendChild(link);
+                link.click();
+
+                // Удаление ссылки из DOM
+                document.body.removeChild(link);
+            } catch (error) {
+                console.error('Error downloading the PDF:', error);
+            }
+        });
+    </script>
+</body>
+
+</html>
